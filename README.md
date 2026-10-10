@@ -36,6 +36,7 @@ func main() {
 	}
 
 	m, err := r.At("/users/42")
+	
 	if err != nil {
 		panic(err)
 	}
@@ -45,6 +46,7 @@ func main() {
 	fmt.Println(m.Value, id) // profile 42
 
 	m, err = r.At("/files/notes/todo.txt")
+
 	if err != nil {
 		panic(err)
 	}
