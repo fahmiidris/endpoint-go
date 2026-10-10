@@ -65,13 +65,9 @@ func TestAtConcurrent(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	for g := 0; g < 8; g++ {
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
-			for i := 0; i < 500; i++ {
+	for range 8 {
+		wg.Go(func() {
+			for range 500 {
 				if m, err := r.At("/users/42"); err != nil || m.Value != 2 {
 					t.Errorf("At(%q) = %v, %v; want value 2, nil", "/users/42", m.Value, err)
 					return
@@ -82,7 +78,7 @@ func TestAtConcurrent(t *testing.T) {
 					return
 				}
 			}
-		}()
+		})
 	}
 
 	wg.Wait()
@@ -145,9 +141,8 @@ func BenchmarkAt_Static(b *testing.B) {
 	mustInsertB(b, r, "/apple", 5)
 
 	b.ReportAllocs()
-	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		m, err := r.At("/users/list/active")
 
 		if err != nil {
@@ -166,9 +161,8 @@ func BenchmarkAt_Params(b *testing.B) {
 	mustInsertB(b, r, "/users/:id/posts/:post", 3)
 
 	b.ReportAllocs()
-	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		m, err := r.At("/users/42/posts/7")
 
 		if err != nil {
