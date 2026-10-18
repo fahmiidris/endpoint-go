@@ -120,6 +120,7 @@ func TestAtDoesNotAllocate(t *testing.T) {
 
 			allocs := testing.AllocsPerRun(1000, func() {
 				m, _ := r.At(tt.path)
+
 				sinkInt = m.Value
 
 				for _, p := range m.Params {
@@ -174,6 +175,7 @@ func BenchmarkAt_Params(b *testing.B) {
 		}
 
 		id, _ := m.Params.Get("id")
+
 		sinkString = id
 	}
 }

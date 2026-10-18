@@ -156,6 +156,7 @@ func (n *node[T]) descendStatic(chunk string) *node[T] {
 
 		if i < 0 {
 			leaf := &node[T]{prefix: chunk}
+
 			n.addStaticChild(leaf)
 
 			return leaf

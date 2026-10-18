@@ -581,6 +581,7 @@ func refMatch(route, path string) ([]refParam, []int, bool) {
 		// Literal segments are worth 2. A chunk ends with '/' exactly when a
 		// token follows it, and that slash is a separator, not a segment.
 		n := strings.Count(chunk, "/")
+
 		if strings.HasSuffix(chunk, "/") {
 			n--
 		}
@@ -619,6 +620,7 @@ func refMatch(route, path string) ([]refParam, []int, bool) {
 
 		// A parameter matches exactly one non-empty segment.
 		segment := path[i:]
+
 		if segment == "" || segment[0] == '/' {
 			return nil, nil, false
 		}
@@ -664,6 +666,7 @@ func referenceMatch(routes []string, path string) (string, []refParam, bool) {
 
 	for _, route := range routes {
 		captured, spec, ok := refMatch(route, path)
+
 		if !ok {
 			continue
 		}
@@ -690,6 +693,7 @@ func genRoute(rng *rand.Rand) string {
 	n := 1 + rng.IntN(6)
 
 	segs := make([]string, 0, n+1)
+
 	for range n {
 		if rng.IntN(2) == 0 {
 			segs = append(segs, genStatics[rng.IntN(len(genStatics))])
@@ -742,6 +746,7 @@ func genPath(rng *rand.Rand, routes []string) string {
 	}
 
 	parts := make([]string, 1+rng.IntN(5))
+
 	for i := range parts {
 		if rng.IntN(4) == 0 {
 			parts[i] = ""
@@ -760,6 +765,7 @@ func genRouteSet(rng *rand.Rand) []string {
 
 	for range 1 + rng.IntN(10) {
 		route := genRoute(rng)
+
 		if !seen[route] {
 			seen[route] = true
 			routes = append(routes, route)
@@ -804,6 +810,7 @@ func checkMatch(t *testing.T, r *endpoint.Router[string], routes []string, path 
 	}
 
 	m2, err2 := r.At(path)
+
 	if err2 != nil || m2.Value != m.Value || len(m2.Params) != len(m.Params) {
 		t.Fatalf("At(%q) is not deterministic: (%v, %v) then (%v, %v)", path, m, err, m2, err2)
 	}
@@ -828,6 +835,7 @@ func checkRouteSet(t *testing.T, rng *rand.Rand) {
 	}
 
 	rev := endpoint.New[string]()
+
 	for i := len(routes) - 1; i >= 0; i-- {
 		if err := rev.Insert(routes[i], routes[i]); err != nil {
 			t.Fatalf("reverse insert of %q failed: %v", routes[i], err)
@@ -835,6 +843,7 @@ func checkRouteSet(t *testing.T, rng *rand.Rand) {
 	}
 
 	paths := make([]string, 0, 2*len(routes)+6)
+
 	for _, route := range routes {
 		paths = append(paths, instantiate(rng, route), instantiate(rng, route))
 	}
