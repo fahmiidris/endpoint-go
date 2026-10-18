@@ -7,7 +7,7 @@ the value plus any captured parameters. No dependencies, no `unsafe`, no
 
 ## Installation
 
-Requires Go 1.26.3 or newer.
+Requires Go 1.25 or newer.
 
 ```
 go get github.com/fahmiidris/endpoint-go
