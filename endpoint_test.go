@@ -17,11 +17,11 @@ func TestInsertInvalidRoute(t *testing.T) {
 		err := r.Insert(path, 1)
 
 		if err == nil {
-			t.Fatalf("Insert(%q) succeeded, want ERROR_INVALID_ROUTE", path)
+			t.Fatalf("Insert(%q) succeeded, want ErrInvalidRoute", path)
 		}
 
-		if !errors.Is(err, endpoint.ERROR_INVALID_ROUTE) {
-			t.Errorf("Insert(%q) error = %v, want ERROR_INVALID_ROUTE", path, err)
+		if !errors.Is(err, endpoint.ErrInvalidRoute) {
+			t.Errorf("Insert(%q) error = %v, want ErrInvalidRoute", path, err)
 		}
 
 		if !strings.Contains(err.Error(), path) {
@@ -50,8 +50,8 @@ func TestAtEmptyRouter(t *testing.T) {
 	r := endpoint.New[int]()
 
 	for _, path := range []string{"/", "/users", ""} {
-		if _, err := r.At(path); !errors.Is(err, endpoint.ERROR_NOT_FOUND) {
-			t.Errorf("At(%q) error = %v, want ERROR_NOT_FOUND", path, err)
+		if _, err := r.At(path); !errors.Is(err, endpoint.ErrNotFound) {
+			t.Errorf("At(%q) error = %v, want ErrNotFound", path, err)
 		}
 	}
 }
@@ -94,6 +94,10 @@ var (
 // TestAtDoesNotAllocate asserts that ordinary lookups allocate nothing, using
 // the same measurement the benchmarks report.
 func TestAtDoesNotAllocate(t *testing.T) {
+	if mode := testing.CoverMode(); mode != "" {
+		t.Skipf("coverage mode %q disables the inlining this test relies on", mode)
+	}
+
 	r := endpoint.New[int]()
 
 	mustInsert(t, r, "/users/list", 1)
