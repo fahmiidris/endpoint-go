@@ -36,7 +36,7 @@ func main() {
 	}
 
 	m, err := r.At("/users/42")
-	
+
 	if err != nil {
 		panic(err)
 	}
@@ -53,12 +53,13 @@ func main() {
 
 	path, _ := m.Params.Get("path")
 
-		fmt.Println(m.Value, path) // static files notes/todo.txt
-	}
-	```
+	fmt.Println(m.Value, path) // static files notes/todo.txt
+}
 
-	A zero-value `Router[T]` is an empty router, so `var r endpoint.Router[string]`
-	works as well; `New` only spells that out.
+```
+
+A zero-value `Router[T]` is an empty router, so `var r endpoint.Router[string]`
+works as well; `New` only spells that out.
 
 ## Route syntax
 
@@ -124,8 +125,7 @@ Insertion walks down the tree, splitting nodes where prefixes diverge:
 
 ```
 insert "/apple", then "/app":
-
-    "/apple"        →       "/app"  (value)
+       "/apple"   ->  "/app"  (value)
                               └── "le"
 ```
 
