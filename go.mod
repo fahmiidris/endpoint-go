@@ -1,3 +1,3 @@
 module github.com/fahmiidris/endpoint-go
 
-go 1.26.3
+go 1.25

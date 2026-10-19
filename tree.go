@@ -44,7 +44,7 @@ type node[T any] struct {
 func (n *node[T]) insert(path string, value T) error {
 	if path == "" {
 		if n.hasValue {
-			return ERROR_DUPLICATE_ROUTE
+			return ErrDuplicateRoute
 		}
 
 		n.value = value
@@ -95,22 +95,22 @@ func (n *node[T]) insertToken(pre, token string, value T) error {
 	name, rest, catchAll := parseToken(token)
 
 	if name == "" {
-		return ERROR_EMPTY_PARAM_NAME
+		return ErrEmptyParamName
 	}
 
 	if catchAll {
 		if rest != "" {
-			return ERROR_CATCH_ALL_NOT_LAST
+			return ErrCatchAllNotLast
 		}
 
 		if mid.catchAll == nil {
 			mid.catchAll = &node[T]{kind: kindCatchAll, name: name}
 		} else if mid.catchAll.name != name {
-			return ERROR_PARAM_CONFLICT
+			return ErrParamConflict
 		}
 
 		if mid.catchAll.hasValue {
-			return ERROR_DUPLICATE_ROUTE
+			return ErrDuplicateRoute
 		}
 
 		mid.catchAll.value = value
@@ -120,13 +120,13 @@ func (n *node[T]) insertToken(pre, token string, value T) error {
 	}
 
 	if rest != "" && rest[0] != '/' {
-		return ERROR_INVALID_ROUTE
+		return ErrInvalidRoute
 	}
 
 	if mid.param == nil {
 		mid.param = &node[T]{kind: kindParam, name: name}
 	} else if mid.param.name != name {
-		return ERROR_PARAM_CONFLICT
+		return ErrParamConflict
 	}
 
 	return mid.param.insert(rest, value)
@@ -138,7 +138,7 @@ func (n *node[T]) insertStatic(chunk string, value T) error {
 	leaf := n.descendStatic(chunk)
 
 	if leaf.hasValue {
-		return ERROR_DUPLICATE_ROUTE
+		return ErrDuplicateRoute
 	}
 
 	leaf.value = value
@@ -156,6 +156,7 @@ func (n *node[T]) descendStatic(chunk string) *node[T] {
 
 		if i < 0 {
 			leaf := &node[T]{prefix: chunk}
+
 			n.addStaticChild(leaf)
 
 			return leaf

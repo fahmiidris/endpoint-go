@@ -43,13 +43,17 @@
 //
 // # Allocations
 //
-// At does not allocate for ordinary lookups. Captured parameters are written
-// into a fixed-size array in the caller's stack frame, covering routes with up
-// to eight parameters; routes with more fall back to an exactly sized heap
-// slice. If the returned Match and its Params escape the caller, Go promotes
-// the backing array to the heap, which is required for soundness; lookups that
-// do not retain the Match allocate nothing. Misses return [ERROR_NOT_FOUND]
-// unwrapped and allocate nothing either.
+// At does not allocate for ordinary lookups in an ordinary build. Captured
+// parameters are written into a fixed-size array in the caller's stack frame,
+// covering routes with up to eight parameters; routes with more fall back to an
+// exactly sized heap slice. The array stays on the stack while the compiler
+// inlines At into its caller, which it does by default: coverage
+// instrumentation and builds with inlining disabled push At over the inline
+// budget, and lookups then allocate one 256-byte buffer per call. If the
+// returned Match and its Params escape the caller, Go promotes the backing
+// array to the heap, which is required for soundness; lookups that do not
+// retain the Match allocate nothing. Misses return [ErrNotFound] unwrapped and
+// allocate nothing either.
 package endpoint
 
 import "fmt"
@@ -75,13 +79,17 @@ func New[T any]() *Router[T] {
 
 // Insert registers value for route.
 //
-// It returns ERROR_INVALID_ROUTE, ERROR_DUPLICATE_ROUTE, ERROR_PARAM_CONFLICT,
-// ERROR_EMPTY_PARAM_NAME, or ERROR_CATCH_ALL_NOT_LAST for malformed, duplicated, or
+// It returns [ErrInvalidRoute], [ErrDuplicateRoute], [ErrParamConflict],
+// [ErrEmptyParamName], or [ErrCatchAllNotLast] for malformed, duplicated, or
 // conflicting routes. Every returned error includes the route and wraps the
 // relevant sentinel, so errors.Is works.
+//
+// Insert is not transactional: it validates route as it descends the tree, so a
+// rejected route can leave empty, value-less nodes behind. Those nodes never
+// change the result of a lookup.
 func (r *Router[T]) Insert(path string, value T) error {
 	if path == "" || path[0] != '/' {
-		return fmt.Errorf("endpoint: insert route %q: %w", path, ERROR_INVALID_ROUTE)
+		return fmt.Errorf("endpoint: insert route %q: %w", path, ErrInvalidRoute)
 	}
 
 	if err := r.root.insert(path, value); err != nil {
@@ -103,7 +111,7 @@ type Match[T any] struct {
 
 // At returns the value registered for the route that matches path, together
 // with the parameters it captured. If no route matches, At returns the zero
-// Match and ERROR_NOT_FOUND.
+// Match and [ErrNotFound].
 func (r *Router[T]) At(path string) (Match[T], error) {
 	var buf [maxInlineParams]Param
 
@@ -123,7 +131,7 @@ func (r *Router[T]) at(path string, buf *[maxInlineParams]Param) (Match[T], erro
 	matched, n, ok := r.root.search(path, buf[:], 0)
 
 	if !ok {
-		return Match[T]{}, ERROR_NOT_FOUND
+		return Match[T]{}, ErrNotFound
 	}
 
 	if n <= maxInlineParams {
