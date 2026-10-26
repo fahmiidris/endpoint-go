@@ -7,7 +7,7 @@ the value plus any captured parameters. No dependencies, no `unsafe`, no
 
 ## Installation
 
-Requires Go 1.26.3 or newer.
+Requires Go 1.25 or newer.
 
 ```
 go get github.com/fahmiidris/endpoint-go
@@ -36,7 +36,7 @@ func main() {
 	}
 
 	m, err := r.At("/users/42")
-	
+
 	if err != nil {
 		panic(err)
 	}
@@ -55,7 +55,11 @@ func main() {
 
 	fmt.Println(m.Value, path) // static files notes/todo.txt
 }
+
 ```
+
+A zero-value `Router[T]` is an empty router, so `var r endpoint.Router[string]`
+works as well; `New` only spells that out.
 
 ## Route syntax
 
@@ -83,7 +87,7 @@ that are not `/`, `:`, or `*`.
    `/files/*path` matches `/files/a/b` with `path == "a/b"`, and `/files/`
    with `path == ""`.
 6. The same position in the tree cannot capture under two different names;
-   inserting such a route returns `ERROR_PARAM_CONFLICT`.
+   inserting such a route returns `ErrParamConflict`.
 7. Captured parameters are returned in the order they appear in the route.
    `Params.Get` reports whether a name was captured and returns its value; if
    a route uses the same name at more than one position, as in
@@ -121,8 +125,7 @@ Insertion walks down the tree, splitting nodes where prefixes diverge:
 
 ```
 insert "/apple", then "/app":
-
-    "/apple"        →       "/app"  (value)
+       "/apple"   ->  "/app"  (value)
                               └── "le"
 ```
 
@@ -134,13 +137,13 @@ A lookup consumes the path byte by byte, trying children in priority order
 (static, param, catch-all). If a higher-priority branch fails deeper in the
 path, the search backtracks to the next branch. No path text is copied or
 converted to `[]byte`; parameter values are substrings that share memory with
-the input path.
+the input path, so a retained `Match` keeps the whole path string alive.
 
 ## Allocations
 
-`At` does not allocate for ordinary lookups — `TestAtDoesNotAllocate` asserts
-this with `testing.AllocsPerRun`, and the benchmarks report `0 B/op,
-0 allocs/op` (Apple M3 Pro):
+`At` does not allocate for ordinary lookups in an ordinary build —
+`TestAtDoesNotAllocate` asserts this with `testing.AllocsPerRun`, and the
+benchmarks report `0 B/op, 0 allocs/op` (Apple M3 Pro):
 
 ```
 BenchmarkAt_Static-12    30830100    37.27 ns/op    0 B/op    0 allocs/op
@@ -149,30 +152,39 @@ BenchmarkAt_Params-12    23494783    50.69 ns/op    0 B/op    0 allocs/op
 
 Captured parameters are written into a fixed-size array declared in `At`.
 Because `At` stays within the compiler's inlining budget, the array lives in
-the caller's stack frame. Two caveats:
+the caller's stack frame. Caveats:
 
+- The array only stays on the stack while `At` is inlined into its caller,
+  which is the default. Coverage instrumentation (`go test -cover`) and builds
+  with inlining disabled (`-gcflags=all=-l`) push `At` over the inline budget,
+  and lookups then allocate one 256-byte buffer per call.
+  `TestAtDoesNotAllocate` skips itself when coverage is enabled.
 - If the returned `Match` outlives the call, Go promotes the array to the
   heap. That is required for soundness and only happens when the caller
   retains the result.
 - Routes capturing more than eight parameters fall back to an exactly sized
   heap slice (they still work, they just allocate).
 
-Misses return `ERROR_NOT_FOUND` unwrapped, so they do not allocate either.
+Misses return `ErrNotFound` unwrapped, so they do not allocate either.
 
 ## Errors
 
 `Insert` returns one of these sentinels, wrapped with the route, so
 `errors.Is` works:
 
-| Error                      | Cause                                                                        |
-| -------------------------- | ---------------------------------------------------------------------------- |
-| `ERROR_INVALID_ROUTE`      | route is empty or does not start with `/`, or a parameter token is malformed |
-| `ERROR_DUPLICATE_ROUTE`    | the same route is already registered                                         |
-| `ERROR_PARAM_CONFLICT`     | two routes capture the same position with different names                    |
-| `ERROR_EMPTY_PARAM_NAME`   | a `:` or `*` segment has no name                                             |
-| `ERROR_CATCH_ALL_NOT_LAST` | a `*name` segment is followed by more segments                               |
+| Error                | Cause                                                                        |
+| -------------------- | ---------------------------------------------------------------------------- |
+| `ErrInvalidRoute`    | route is empty or does not start with `/`, or a parameter token is malformed |
+| `ErrDuplicateRoute`  | the same route is already registered                                         |
+| `ErrParamConflict`   | two routes capture the same position with different names                    |
+| `ErrEmptyParamName`  | a `:` or `*` segment has no name                                             |
+| `ErrCatchAllNotLast` | a `*name` segment is followed by more segments                               |
 
-`At` returns `ERROR_NOT_FOUND` when nothing matches.
+`At` returns `ErrNotFound` when nothing matches.
+
+`Insert` is not transactional: it validates the route as it descends the tree,
+so a rejected route can leave empty, value-less nodes behind. Those nodes never
+change the result of a lookup.
 
 ## Concurrency
 
@@ -191,4 +203,10 @@ hints, HTTP method handling, and `net/http` integration.
 go test ./...
 go test -race ./...
 go test -bench . -benchmem
+go test -fuzz=FuzzAtMatchesReference -fuzztime 30s
 ```
+
+`TestAtMatchesReference` and `FuzzAtMatchesReference` register random route sets
+and compare `At` against a brute-force reference matcher over generated paths,
+which is stronger than fixed cases for precedence and backtracking. The
+randomized test uses a fixed seed, so a failure repeats.

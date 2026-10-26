@@ -3,6 +3,7 @@ package endpoint_test
 import (
 	"errors"
 	"fmt"
+	"math/rand/v2"
 	"strings"
 	"testing"
 
@@ -64,8 +65,8 @@ func TestAtStatic(t *testing.T) {
 			m, err := r.At(tt.path)
 
 			if !tt.found {
-				if !errors.Is(err, endpoint.ERROR_NOT_FOUND) {
-					t.Fatalf("At(%q) error = %v, want ERROR_NOT_FOUND", tt.path, err)
+				if !errors.Is(err, endpoint.ErrNotFound) {
+					t.Fatalf("At(%q) error = %v, want ErrNotFound", tt.path, err)
 				}
 
 				return
@@ -112,8 +113,8 @@ func TestInsertSplitOrders(t *testing.T) {
 				}
 			}
 
-			if _, err := r.At("/apples"); !errors.Is(err, endpoint.ERROR_NOT_FOUND) {
-				t.Errorf(`At("/apples") error = %v, want ERROR_NOT_FOUND`, err)
+			if _, err := r.At("/apples"); !errors.Is(err, endpoint.ErrNotFound) {
+				t.Errorf(`At("/apples") error = %v, want ErrNotFound`, err)
 			}
 		})
 	}
@@ -126,8 +127,8 @@ func TestInsertDuplicateStatic(t *testing.T) {
 
 	err := r.Insert("/app", 2)
 
-	if !errors.Is(err, endpoint.ERROR_DUPLICATE_ROUTE) {
-		t.Errorf("Insert duplicate error = %v, want ERROR_DUPLICATE_ROUTE", err)
+	if !errors.Is(err, endpoint.ErrDuplicateRoute) {
+		t.Errorf("Insert duplicate error = %v, want ErrDuplicateRoute", err)
 	}
 
 	if !strings.Contains(err.Error(), "/app") {
@@ -176,8 +177,8 @@ func TestAtParams(t *testing.T) {
 			m, err := r.At(tt.path)
 
 			if !tt.found {
-				if !errors.Is(err, endpoint.ERROR_NOT_FOUND) {
-					t.Fatalf("At(%q) error = %v, want ERROR_NOT_FOUND", tt.path, err)
+				if !errors.Is(err, endpoint.ErrNotFound) {
+					t.Fatalf("At(%q) error = %v, want ErrNotFound", tt.path, err)
 				}
 
 				return
@@ -235,13 +236,13 @@ func TestInsertParamErrors(t *testing.T) {
 		path  string
 		want  error
 	}{
-		{"empty name", nil, "/users/:", endpoint.ERROR_EMPTY_PARAM_NAME},
-		{"empty name at root", nil, "/:", endpoint.ERROR_EMPTY_PARAM_NAME},
-		{"misplaced token", nil, "/users/:id:x", endpoint.ERROR_INVALID_ROUTE},
-		{"duplicate", []string{"/users/:id"}, "/users/:id", endpoint.ERROR_DUPLICATE_ROUTE},
-		{"conflict", []string{"/users/:id"}, "/users/:name", endpoint.ERROR_PARAM_CONFLICT},
-		{"conflict before suffix", []string{"/users/:id"}, "/users/:name/posts", endpoint.ERROR_PARAM_CONFLICT},
-		{"conflict beneath shared prefix", []string{"/a/:x/b/:z"}, "/a/:x/b/:y", endpoint.ERROR_PARAM_CONFLICT},
+		{"empty name", nil, "/users/:", endpoint.ErrEmptyParamName},
+		{"empty name at root", nil, "/:", endpoint.ErrEmptyParamName},
+		{"misplaced token", nil, "/users/:id:x", endpoint.ErrInvalidRoute},
+		{"duplicate", []string{"/users/:id"}, "/users/:id", endpoint.ErrDuplicateRoute},
+		{"conflict", []string{"/users/:id"}, "/users/:name", endpoint.ErrParamConflict},
+		{"conflict before suffix", []string{"/users/:id"}, "/users/:name/posts", endpoint.ErrParamConflict},
+		{"conflict beneath shared prefix", []string{"/a/:x/b/:z"}, "/a/:x/b/:y", endpoint.ErrParamConflict},
 	}
 
 	for _, tt := range tests {
@@ -322,8 +323,8 @@ func TestAtCatchAll(t *testing.T) {
 			m, err := r.At(tt.path)
 
 			if !tt.found {
-				if !errors.Is(err, endpoint.ERROR_NOT_FOUND) {
-					t.Fatalf("At(%q) error = %v, want ERROR_NOT_FOUND", tt.path, err)
+				if !errors.Is(err, endpoint.ErrNotFound) {
+					t.Fatalf("At(%q) error = %v, want ErrNotFound", tt.path, err)
 				}
 
 				return
@@ -359,11 +360,11 @@ func TestInsertCatchAllErrors(t *testing.T) {
 		path  string
 		want  error
 	}{
-		{"empty name", nil, "/files/*", endpoint.ERROR_EMPTY_PARAM_NAME},
-		{"not last", nil, "/files/*path/x", endpoint.ERROR_CATCH_ALL_NOT_LAST},
-		{"second catch-all", nil, "/a/*x/*y", endpoint.ERROR_CATCH_ALL_NOT_LAST},
-		{"duplicate", []string{"/files/*path"}, "/files/*path", endpoint.ERROR_DUPLICATE_ROUTE},
-		{"conflict", []string{"/files/*path"}, "/files/*rest", endpoint.ERROR_PARAM_CONFLICT},
+		{"empty name", nil, "/files/*", endpoint.ErrEmptyParamName},
+		{"not last", nil, "/files/*path/x", endpoint.ErrCatchAllNotLast},
+		{"second catch-all", nil, "/a/*x/*y", endpoint.ErrCatchAllNotLast},
+		{"duplicate", []string{"/files/*path"}, "/files/*path", endpoint.ErrDuplicateRoute},
+		{"conflict", []string{"/files/*path"}, "/files/*rest", endpoint.ErrParamConflict},
 	}
 
 	for _, tt := range tests {
@@ -412,8 +413,8 @@ func TestTokenCharsAsLiterals(t *testing.T) {
 	}
 
 	for _, path := range []string{"/files", "/a"} {
-		if _, err := r.At(path); !errors.Is(err, endpoint.ERROR_NOT_FOUND) {
-			t.Errorf("At(%q) error = %v, want ERROR_NOT_FOUND", path, err)
+		if _, err := r.At(path); !errors.Is(err, endpoint.ErrNotFound) {
+			t.Errorf("At(%q) error = %v, want ErrNotFound", path, err)
 		}
 	}
 }
@@ -461,8 +462,8 @@ func TestAtBacktracking(t *testing.T) {
 			m, err := r.At(tt.path)
 
 			if !tt.found {
-				if !errors.Is(err, endpoint.ERROR_NOT_FOUND) {
-					t.Fatalf("At(%q) error = %v, want ERROR_NOT_FOUND", tt.path, err)
+				if !errors.Is(err, endpoint.ErrNotFound) {
+					t.Fatalf("At(%q) error = %v, want ErrNotFound", tt.path, err)
 				}
 
 				return
@@ -517,4 +518,384 @@ func TestAtManyParams(t *testing.T) {
 			t.Errorf("Get(%q) = %q, %v; want %q, true", key, got, ok, want)
 		}
 	}
+}
+
+// The tests below compare At against a brute-force reference implementation of
+// the matching rules documented in README.md.
+//
+// refMatch implements those rules for a single route: whether the route
+// matches a path, the parameters it captures in route order, and a per-segment
+// specificity vector (static = 2, parameter = 1, catch-all = 0). The winner
+// among all matching routes is the one with the lexicographically greatest
+// vector, and the shorter vector wins when one is a prefix of the other,
+// because a route that ends exactly is more specific than one that continues
+// with a catch-all.
+//
+// TestAtMatchesReference and FuzzAtMatchesReference register random route sets
+// and compare Router.At against that reference, which catches regressions in
+// precedence, backtracking, and parameter bookkeeping that tables of fixed
+// cases can miss.
+
+// refParam is one capture produced by the reference matcher.
+type refParam struct {
+	name  string
+	value string
+}
+
+// refTokenIndex returns the index of the first ':' or '*' that starts a new
+// segment in route, or -1 if there is none.
+func refTokenIndex(route string) int {
+	for i := 0; i < len(route); i++ {
+		if c := route[i]; (c == ':' || c == '*') && (i == 0 || route[i-1] == '/') {
+			return i
+		}
+	}
+
+	return -1
+}
+
+// refMatch implements the documented matching rules for a single route. It
+// returns the captures in route order and the route's specificity vector.
+func refMatch(route, path string) ([]refParam, []int, bool) {
+	var (
+		params []refParam
+		spec   []int
+		i      int
+		rest   = route
+	)
+
+	for rest != "" {
+		tok := refTokenIndex(rest)
+		chunk := rest
+
+		if tok >= 0 {
+			chunk = rest[:tok]
+		}
+
+		if !strings.HasPrefix(path[i:], chunk) {
+			return nil, nil, false
+		}
+
+		i += len(chunk)
+
+		// Literal segments are worth 2. A chunk ends with '/' exactly when a
+		// token follows it, and that slash is a separator, not a segment.
+		n := strings.Count(chunk, "/")
+
+		if strings.HasSuffix(chunk, "/") {
+			n--
+		}
+
+		for range n {
+			spec = append(spec, 2)
+		}
+
+		if tok < 0 {
+			break
+		}
+
+		rest = rest[tok:]
+		catchAll := rest[0] == '*'
+
+		seg := rest[1:]
+		name, next := seg, ""
+
+		if j := strings.IndexAny(seg, "/:*"); j >= 0 {
+			name, next = seg[:j], seg[j:]
+		}
+
+		rest = next
+
+		if catchAll {
+			if rest != "" {
+				return nil, nil, false // malformed; never generated
+			}
+
+			params = append(params, refParam{name, path[i:]})
+			spec = append(spec, 0)
+			i = len(path)
+
+			break
+		}
+
+		// A parameter matches exactly one non-empty segment.
+		segment := path[i:]
+
+		if segment == "" || segment[0] == '/' {
+			return nil, nil, false
+		}
+
+		if j := strings.IndexByte(segment, '/'); j >= 0 {
+			params = append(params, refParam{name, segment[:j]})
+			spec = append(spec, 1)
+			i += j
+		} else {
+			params = append(params, refParam{name, segment})
+			spec = append(spec, 1)
+			i = len(path)
+		}
+	}
+
+	if i != len(path) {
+		return nil, nil, false
+	}
+
+	return params, spec, true
+}
+
+// moreSpecific reports whether a beats b.
+func moreSpecific(a, b []int) bool {
+	for i := 0; i < len(a) && i < len(b); i++ {
+		if a[i] != b[i] {
+			return a[i] > b[i]
+		}
+	}
+
+	return len(a) < len(b)
+}
+
+// referenceMatch returns the route that wins for path under the documented
+// rules, along with the parameters it captures.
+func referenceMatch(routes []string, path string) (string, []refParam, bool) {
+	var (
+		pattern string
+		params  []refParam
+		best    []int
+		found   bool
+	)
+
+	for _, route := range routes {
+		captured, spec, ok := refMatch(route, path)
+
+		if !ok {
+			continue
+		}
+
+		if !found || moreSpecific(spec, best) {
+			pattern, params, best, found = route, captured, spec, true
+		}
+	}
+
+	return pattern, params, found
+}
+
+var (
+	genStatics  = []string{"a", "b", "c", "aa", "ab", "abc", "x1"}
+	genParams   = []string{"p", "q", "r"}
+	genCatch    = []string{"z", "w"}
+	genLits     = []string{"1", "hi", "q", "a", "b", "ab"}
+	genPathSegs = []string{"a", "b", "c", "x1", "aa", "ab", "abc", "1", "hi", "q"}
+)
+
+// genRoute returns a random well-formed route of one to six segments, ending in
+// a static segment, a parameter, or a catch-all.
+func genRoute(rng *rand.Rand) string {
+	n := 1 + rng.IntN(6)
+
+	segs := make([]string, 0, n+1)
+
+	for range n {
+		if rng.IntN(2) == 0 {
+			segs = append(segs, genStatics[rng.IntN(len(genStatics))])
+		} else {
+			segs = append(segs, ":"+genParams[rng.IntN(len(genParams))])
+		}
+	}
+
+	if rng.IntN(3) == 0 {
+		if rng.IntN(2) == 0 {
+			segs = segs[:len(segs)-1]
+		}
+
+		segs = append(segs, "*"+genCatch[rng.IntN(len(genCatch))])
+	}
+
+	return "/" + strings.Join(segs, "/")
+}
+
+// instantiate turns route into a concrete path, replacing parameters with
+// random non-empty segments and a catch-all with random text.
+func instantiate(rng *rand.Rand, route string) string {
+	segs := strings.Split(route[1:], "/")
+
+	for i, seg := range segs {
+		switch {
+		case strings.HasPrefix(seg, ":"):
+			segs[i] = genLits[rng.IntN(len(genLits))]
+		case strings.HasPrefix(seg, "*"):
+			switch rng.IntN(3) {
+			case 0:
+				segs[i] = ""
+			case 1:
+				segs[i] = genLits[rng.IntN(len(genLits))]
+			default:
+				segs[i] = genLits[rng.IntN(len(genLits))] + "/" + genLits[rng.IntN(len(genLits))]
+			}
+		}
+	}
+
+	return "/" + strings.Join(segs, "/")
+}
+
+// genPath returns a random path, either an instantiated route or random
+// segments, including empty ones, which exercise the rule that a parameter
+// never matches an empty segment.
+func genPath(rng *rand.Rand, routes []string) string {
+	if rng.IntN(2) == 0 {
+		return instantiate(rng, routes[rng.IntN(len(routes))])
+	}
+
+	parts := make([]string, 1+rng.IntN(5))
+
+	for i := range parts {
+		if rng.IntN(4) == 0 {
+			parts[i] = ""
+		} else {
+			parts[i] = genPathSegs[rng.IntN(len(genPathSegs))]
+		}
+	}
+
+	return "/" + strings.Join(parts, "/")
+}
+
+// genRouteSet returns up to ten distinct random routes.
+func genRouteSet(rng *rand.Rand) []string {
+	routes := make([]string, 0, 10)
+	seen := map[string]bool{}
+
+	for range 1 + rng.IntN(10) {
+		route := genRoute(rng)
+
+		if !seen[route] {
+			seen[route] = true
+			routes = append(routes, route)
+		}
+	}
+
+	return routes
+}
+
+// checkMatch compares one lookup against the reference matcher.
+func checkMatch(t *testing.T, r *endpoint.Router[string], routes []string, path string) {
+	t.Helper()
+
+	wantPattern, wantParams, found := referenceMatch(routes, path)
+
+	m, err := r.At(path)
+
+	if !found {
+		if !errors.Is(err, endpoint.ErrNotFound) {
+			t.Fatalf("At(%q) = %q, %v; want ErrNotFound (routes %v)", path, m.Value, err, routes)
+		}
+
+		return
+	}
+
+	if err != nil {
+		t.Fatalf("At(%q) error = %v; want %q (routes %v)", path, err, wantPattern, routes)
+	}
+
+	if m.Value != wantPattern {
+		t.Fatalf("At(%q) value = %q; want %q (routes %v)", path, m.Value, wantPattern, routes)
+	}
+
+	if len(m.Params) != len(wantParams) {
+		t.Fatalf("At(%q) params = %v; want %v (route %q)", path, m.Params, wantParams, wantPattern)
+	}
+
+	for i, want := range wantParams {
+		if m.Params[i].Key != want.name || m.Params[i].Value != want.value {
+			t.Fatalf("At(%q) params[%d] = %v; want %s=%s (route %q)", path, i, m.Params[i], want.name, want.value, wantPattern)
+		}
+	}
+
+	m2, err2 := r.At(path)
+
+	if err2 != nil || m2.Value != m.Value || len(m2.Params) != len(m.Params) {
+		t.Fatalf("At(%q) is not deterministic: (%v, %v) then (%v, %v)", path, m, err, m2, err2)
+	}
+}
+
+// checkRouteSet registers a random route set in two routers, in forward and
+// reverse order, and checks a batch of lookups against the reference. It also
+// checks that rejected routes do not change what the routers already matched.
+func checkRouteSet(t *testing.T, rng *rand.Rand) {
+	t.Helper()
+
+	routes := genRouteSet(rng)
+
+	r := endpoint.New[string]()
+
+	for _, route := range routes {
+		if err := r.Insert(route, route); err != nil {
+			// Sets that conflict are covered by TestInsertParamErrors and
+			// TestInsertCatchAllErrors.
+			return
+		}
+	}
+
+	rev := endpoint.New[string]()
+
+	for i := len(routes) - 1; i >= 0; i-- {
+		if err := rev.Insert(routes[i], routes[i]); err != nil {
+			t.Fatalf("reverse insert of %q failed: %v", routes[i], err)
+		}
+	}
+
+	paths := make([]string, 0, 2*len(routes)+6)
+
+	for _, route := range routes {
+		paths = append(paths, instantiate(rng, route), instantiate(rng, route))
+	}
+
+	for range 6 {
+		paths = append(paths, genPath(rng, routes))
+	}
+
+	for _, path := range paths {
+		checkMatch(t, r, routes, path)
+		checkMatch(t, rev, routes, path)
+	}
+
+	for _, bad := range []string{"", "nope", "/a/:", "/a/*b/c", "/*x/y"} {
+		if err := r.Insert(bad, bad); err == nil {
+			t.Fatalf("insert of malformed route %q succeeded", bad)
+		}
+	}
+
+	if err := r.Insert(routes[0], routes[0]); !errors.Is(err, endpoint.ErrDuplicateRoute) {
+		t.Fatalf("duplicate insert of %q error = %v", routes[0], err)
+	}
+
+	for _, path := range paths {
+		checkMatch(t, r, routes, path)
+	}
+}
+
+// newRNG returns a deterministic generator for seed.
+func newRNG(seed int64) *rand.Rand {
+	return rand.New(rand.NewPCG(uint64(seed), uint64(seed)^0x9e3779b97f4a7c15))
+}
+
+// TestAtMatchesReference compares At against the reference matcher on random
+// route sets. The generator is deterministic, so failures reproduce.
+func TestAtMatchesReference(t *testing.T) {
+	rng := newRNG(1)
+
+	for range 20000 {
+		checkRouteSet(t, rng)
+	}
+}
+
+// FuzzAtMatchesReference runs the same comparison on a seed drawn from the
+// fuzz corpus. go test runs the seeds below; go test
+// -fuzz=FuzzAtMatchesReference explores further.
+func FuzzAtMatchesReference(f *testing.F) {
+	f.Add(int64(1))
+	f.Add(int64(2))
+	f.Add(int64(-7919))
+
+	f.Fuzz(func(t *testing.T, seed int64) {
+		checkRouteSet(t, newRNG(seed))
+	})
 }

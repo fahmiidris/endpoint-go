@@ -1,7 +1,8 @@
 package endpoint
 
 // Param is one captured parameter: the name from the route and the path text
-// it matched. Value is a substring of the path passed to At, never a copy.
+// it matched. Value is a substring of the path passed to At, never a copy, so
+// retaining a Param keeps the whole path string alive.
 type Param struct {
 	Key   string
 	Value string
